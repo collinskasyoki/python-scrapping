@@ -2,6 +2,7 @@ import os
 import requests
 import xml.etree.ElementTree as ET
 from urllib.parse import urlparse
+import sqlite3
 
 SITEMAP = "https://artofmanliness.com/sitemap_index.xml"
 SCRIPT_PATH = os.path.dirname(__file__)
@@ -66,3 +67,18 @@ for post_sitemap_file in post_sitemap_files:
 
 # Delete duplicates
 sunday_firesides_links = list(set(sunday_firesides_links))
+
+# DB Connection
+# TODO If DB Does not exist, create
+conn = sqlite3.connect("articles.db")
+c = conn.cursor()
+insert_query = "INSERT INTO articles (link, date_modified) VALUES(?,?)"
+
+for article_link in sunday_firesides_links:
+    try:
+        c.execute(insert_query, [article_link[0], article_link[1]])
+    except sqlite3.IntegrityError:
+        continue
+
+conn.commit()
+conn.close()
