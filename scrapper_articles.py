@@ -17,7 +17,6 @@ c = conn.cursor()
 query_select = (
     "SELECT id, link FROM articles WHERE id NOT IN (SELECT article_id FROM content)"
 )
-query_select = "SELECT id, link FROM articles"
 links_db = c.execute(query_select)
 links = links_db.fetchall()
 
