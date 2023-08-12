@@ -1,12 +1,13 @@
-from urllib.request import Request, urlopen
 import os
 import sqlite3
 from requests import get
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 import time
 
 SCRIPT_PATH = os.path.dirname(__file__)
 DATABASE_PATH = os.path.join(SCRIPT_PATH, "articles.db")
+IMAGES_PATH = os.path.join(SCRIPT_PATH, "images")
 
 conn = sqlite3.connect(DATABASE_PATH)
 c = conn.cursor()
@@ -16,6 +17,7 @@ c = conn.cursor()
 query_select = (
     "SELECT id, link FROM articles WHERE id NOT IN (SELECT article_id FROM content)"
 )
+query_select = "SELECT id, link FROM articles"
 links_db = c.execute(query_select)
 links = links_db.fetchall()
 
@@ -39,6 +41,13 @@ for eachlink in links:
     date_published = soup.find("span", itemprop="datePublished").string
     h1 = soup.find("h1", class_="post-title", itemprop="headline").string
 
+    image_link = soup.find("div", class_="post-content-full").find("img")["src"]
+    image_data = get(image_link).content
+    image_name = os.path.basename(urlparse(image_link).path)
+    image_file = open(os.path.join(IMAGES_PATH, image_name), "wb")
+    image_file.write(image_data)
+    image_file.close()
+
     content = soup.find("div", class_="post-content-column")
     content_paragraphs = ""
     for paragraph in content:
@@ -47,8 +56,11 @@ for eachlink in links:
                 content_paragraphs = content_paragraphs + str(paragraph) + "\n"
 
     # Add content details to db
-    query_insert_content = "INSERT INTO content(article_id, title, date_published, content) VALUES(?,?,?,?)"
-    c.execute(query_insert_content, (link_id, h1, date_published, content_paragraphs))
+    query_insert_content = "INSERT INTO content(article_id, title, date_published, image_file, content) VALUES(?,?,?,?,?)"
+    c.execute(
+        query_insert_content,
+        (link_id, h1, date_published, image_name, content_paragraphs),
+    )
     content_id = c.lastrowid
 
     # Parse and add categories to db
